@@ -35,6 +35,9 @@ public class HomeFragment extends Fragment {
     private NavController navController;
     private RecyclerView postsRecyclerView;
 
+    private EditText editTextBusqueda;
+
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -53,6 +56,12 @@ public class HomeFragment extends Fragment {
         });
 
         postsRecyclerView = view.findViewById(R.id.postsRecyclerView);
+        editTextBusqueda = view.findViewById(R.id.editTextBusqueda);
+
+        appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
+
+        // Configurar el botón de búsqueda
+        view.findViewById(R.id.btnFiltrarAutor).setOnClickListener(v -> filtrarPosts());
 
         Query query = FirebaseFirestore.getInstance().collection("posts").limit(50);
 
@@ -63,12 +72,46 @@ public class HomeFragment extends Fragment {
 
         postsRecyclerView.setAdapter(new PostsAdapter(options));
     }
+    private void filtrarPosts() {
+        // Obtener el correo electrónico del usuario actualmente autenticado
+        String autor = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+
+        // Filtrar los posts por autor utilizando el ViewModel
+        appViewModel.filtrarPorAutor(autor);
+
+        // Obtener el contenido de búsqueda desde editTextBusqueda
+        String contenido = editTextBusqueda.getText().toString().trim();
+
+        // Verificar si el campo de búsqueda está vacío
+        if (!contenido.isEmpty()) {
+
+            // Si hay contenido de búsqueda, filtrar los posts por contenido
+            Query query = FirebaseFirestore.getInstance().collection("posts")
+                    .whereEqualTo("content", contenido).limit(50);
+            FirestoreRecyclerOptions<Post> options = new FirestoreRecyclerOptions.Builder<Post>()
+                    .setQuery(query, Post.class)
+                    .setLifecycleOwner(this)
+                    .build();
+            postsRecyclerView.setAdapter(new PostsAdapter(options));
+        } else {
+            // Si el campo de búsqueda está vacío, mostrar todos los posts
+            Query query = FirebaseFirestore.getInstance().collection("posts").limit(50);
+            FirestoreRecyclerOptions<Post> options = new FirestoreRecyclerOptions.Builder<Post>()
+                    .setQuery(query, Post.class)
+                    .setLifecycleOwner(this)
+                    .build();
+            postsRecyclerView.setAdapter(new PostsAdapter(options));
+        }
+    }
+
+
+
 
     class PostsAdapter extends FirestoreRecyclerAdapter<Post, PostsAdapter.PostViewHolder> {
-
         public PostsAdapter(@NonNull FirestoreRecyclerOptions<Post> options) {
             super(options);
         }
+
 
         @NonNull
         @Override
